@@ -1,0 +1,52 @@
+#! /bin/bash
+
+set -o errexit
+set -o nounset
+
+USERNAME=root
+DELAY=10
+HOSTNAME="localhost"
+TABLES_TO_SNAPSHOT="INNODB_TRX INNODB_LOCKS INNODB_LOCK_WAITS"
+
+while getopts u:p:d:h: opt; do
+  case $opt in
+  u)
+      USERNAME=$OPTARG
+      ;;
+  p)
+      PASSWORD=$OPTARG
+      ;;
+  d)
+      DELAY=$OPTARG
+      ;;
+  h)
+      HOSTNAME=$OPTARG
+      ;;
+  esac
+done
+
+mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -e "CREATE DATABASE IF NOT EXISTS innodb_snapshots;"
+
+SESSION_ID=$(date -u '+%Y%m%d_%H%M')
+
+for TABLE in $TABLES_TO_SNAPSHOT ; do
+    mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "CREATE TABLE ${TABLE}_snapshots_${SESSION_ID} LIKE information_schema.${TABLE};" || continue
+    mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "ALTER TABLE ${TABLE}_snapshots_${SESSION_ID} ADD COLUMN snapshot_time INTEGER;"
+done
+    
+echo "Data being saved to innodb_snapshots.\$TABLE_snapshots_${SESSION_ID}"
+echo "Starting recording, press Ctrl-C to stop"
+
+while true ; do
+    NOW=$(date -u '+%s')
+    QUERY=""
+    for TABLE in $TABLES_TO_SNAPSHOT ; do
+        QUERY="$QUERY INSERT INTO ${TABLE}_snapshots_${SESSION_ID} SELECT *, ${NOW} FROM information_schema.${TABLE};"
+    done
+    mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "$QUERY"
+    echo -n "."
+    sleep $DELAY
+done
+        
+
+
