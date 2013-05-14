@@ -31,7 +31,7 @@ SESSION_ID=$(date -u '+%Y%m%d_%H%M')
 
 for TABLE in $TABLES_TO_SNAPSHOT ; do
     mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "CREATE TABLE ${TABLE}_snapshots_${SESSION_ID} LIKE information_schema.${TABLE};" || continue
-    mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "ALTER TABLE ${TABLE}_snapshots_${SESSION_ID} ADD COLUMN snapshot_time INTEGER;"
+    mysql -u $USERNAME -p${PASSWORD} -h ${HOSTNAME} -D innodb_snapshots -e "ALTER TABLE ${TABLE}_snapshots_${SESSION_ID} ADD COLUMN snapshot_time INTEGER; ALTER TABLE ${TABLE}_snapshots_${SESSION_ID} ENGINE = MyISAM;"
 done
     
 echo "Data being saved to innodb_snapshots.\$TABLE_snapshots_${SESSION_ID}"
